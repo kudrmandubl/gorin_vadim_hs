@@ -1,43 +1,46 @@
 using UnityEngine;
 
-public class ConstOrthographicCamera : MonoBehaviour
+namespace HS.Camera
 {
-    [SerializeField] private Vector2 _defaultResolution = new Vector2(1600, 900);
-
-    private Camera _camera;
-
-    private float _initialSize;
-    private float _targetAspect;
-    private float _prevCameraAspect;
-
-    private void Start()
+    public class ConstOrthographicCamera : MonoBehaviour
     {
-        Init();
-    }
+        [SerializeField] private Vector2 _defaultResolution = new Vector2(1600, 900);
 
-    private void Init()
-    {
-        _camera = GetComponent<Camera>();
+        private UnityEngine.Camera _camera;
 
-        _initialSize = _camera.orthographicSize;
-        _targetAspect = _defaultResolution.x / _defaultResolution.y;
-        _prevCameraAspect = _camera.aspect;
-    }
+        private float _initialSize;
+        private float _targetAspect;
+        private float _prevCameraAspect;
 
-    private void Update()
-    {
-        RefreshCamera();
-    }
-
-    private void RefreshCamera()
-    {
-        if(Mathf.Approximately(_camera.aspect, _prevCameraAspect))
+        private void Start()
         {
-            return;
+            Init();
         }
-        _prevCameraAspect = _camera.aspect;
 
-        float constantWidthSize = _initialSize * (_targetAspect / _camera.aspect);
-        _camera.orthographicSize = Mathf.Max(constantWidthSize, _initialSize);
+        private void Init()
+        {
+            _camera = GetComponent<UnityEngine.Camera>();
+
+            _initialSize = _camera.orthographicSize;
+            _targetAspect = _defaultResolution.x / _defaultResolution.y;
+            _prevCameraAspect = _camera.aspect;
+        }
+
+        private void Update()
+        {
+            RefreshCamera();
+        }
+
+        private void RefreshCamera()
+        {
+            if (Mathf.Approximately(_camera.aspect, _prevCameraAspect))
+            {
+                return;
+            }
+            _prevCameraAspect = _camera.aspect;
+
+            float constantWidthSize = _initialSize * (_targetAspect / _camera.aspect);
+            _camera.orthographicSize = Mathf.Max(constantWidthSize, _initialSize);
+        }
     }
 }
