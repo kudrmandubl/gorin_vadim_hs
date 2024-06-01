@@ -1,10 +1,9 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace HS.Location
 {
-    public class LocationGenerator : MonoBehaviour
+    public class LocationGenerator : MonoBehaviour, ILocationGenerator
     {
         private const int TriesCount = 1000;
 
@@ -16,73 +15,76 @@ namespace HS.Location
         [SerializeField] private float _minDistance = 3f;
         [SerializeField] private Collider _groundCollider;
 
-        private List<Point> _points = new List<Point>();
-        private int _totalPointsCount;
+        private List<Point> _allPoints = new List<Point>();
 
-        private void Start()
+        public void Generate(out Point basePoint, out List<Point> points)
         {
-            Init();
-        }
-        
-        private void Init()
-        {
-            _totalPointsCount = _patrolPointCount + 1;
-
             Clear();
-            Generate();
+
+            Bounds groundBounds = _groundCollider.bounds;
+            basePoint = GenerateBasePoint(groundBounds.center, groundBounds.extents, _basePointPrefab);
+            points = GeneratePatrolPoints(groundBounds.center, groundBounds.extents, _patrolPointPrefab);
+        }
+
+        private Point GenerateBasePoint(Vector3 groundCenter, Vector3 groundSize, Point pointPrefab)
+        {
+            Point spawnedPoint = SpawnPoint(groundCenter, groundSize, _basePointPrefab);
+            return spawnedPoint;
+        }
+
+        private List<Point> GeneratePatrolPoints(Vector3 groundCenter, Vector3 groundSize, Point pointPrefab)
+        {
+            List<Point> points = new List<Point>();
+            for (int i = 0; i < TriesCount; i++)
+            {
+                Point spawnedPoint = SpawnPoint(groundCenter, groundSize, _patrolPointPrefab);
+                if (!spawnedPoint)
+                {
+                    continue;
+                }
+                points.Add(spawnedPoint);
+
+                if (points.Count >= _patrolPointCount)
+                    break;
+            }
+            return points;
         }
 
         private void Clear()
         {
-            for (int i = _points.Count - 1; i >= 0; i--)
+            for (int i = _allPoints.Count - 1; i >= 0; i--)
             {
-                Destroy(_points[i].gameObject);
+                Destroy(_allPoints[i].gameObject);
             }
-            _points.Clear();
+            _allPoints.Clear();
         }
 
-        private void Generate()
+        private Point SpawnPoint(Vector3 groundCenter, Vector3 groundSize, Point pointPrefab)
         {
-            Bounds groundBounds = _groundCollider.bounds;
-            for (int i = 0; i < TriesCount; i++)
-            {
-                if (!TrySpawnPoint(groundBounds.center, groundBounds.extents))
-                {
-                    continue;
-                }
+            Vector3 position = GetRandomPosition(groundCenter, groundSize);
+            if (!CheckDitanceToPoints(position, _minDistance, _allPoints))
+                return null;
 
-                if (_points.Count >= _totalPointsCount)
-                    break;
-            }
+            Point spawnedPoint = Instantiate(pointPrefab, position, Quaternion.identity, _pointsContainer);
+            spawnedPoint.Init(position);
 
+            _allPoints.Add(spawnedPoint);
+            return spawnedPoint;
         }
 
-        private bool TrySpawnPoint(Vector3 groundCenter, Vector3 groundSize)
+        private Vector3 GetRandomPosition(Vector3 groundCenter, Vector3 groundSize)
         {
             float x = Random.Range(-1f, 1f);
             float z = Random.Range(-1f, 1f);
 
-            Vector3 position = groundCenter + new Vector3(groundSize.x * x, groundSize.y, groundSize.z * z);
-
-            if (!CheckDitanceToPoints(position, _minDistance))
-                return false;
-
-            Point spawnedPoint = Instantiate(GetNextPointPrefab(), position, Quaternion.identity, _pointsContainer);
-            spawnedPoint.Init(position);
-            _points.Add(spawnedPoint);
-            return true;
+            return groundCenter + new Vector3(groundSize.x * x, groundSize.y, groundSize.z * z);
         }
 
-        private Point GetNextPointPrefab()
-        {
-            return _points.Count > 0 ? _patrolPointPrefab : _basePointPrefab;
-        }
-
-        private bool CheckDitanceToPoints(Vector3 newPosition, float minDistance)
+        private bool CheckDitanceToPoints(Vector3 newPosition, float minDistance, List<Point> allPoints)
         {
             bool isNormalPlace = true;
 
-            foreach (Point point in _points)
+            foreach (Point point in allPoints)
             {
                 if ((point.Position - newPosition).sqrMagnitude < minDistance * minDistance)
                 {
