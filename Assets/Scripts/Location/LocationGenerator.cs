@@ -3,19 +3,42 @@ using UnityEngine;
 
 namespace HS.Location
 {
-    public class LocationGenerator : MonoBehaviour, ILocationGenerator
+    public class LocationGenerator : ILocationGenerator
     {
         private const int TriesCount = 1000;
 
-        [SerializeField] private Point _basePointPrefab;
-        [SerializeField] private Point _patrolPointPrefab;
-        [SerializeField] private Transform _pointsContainer;
+        private Point _basePointPrefab;
+        private Point _patrolPointPrefab;
 
-        [SerializeField] private int _patrolPointCount = 10;
-        [SerializeField] private float _minDistance = 3f;
-        [SerializeField] private Collider _groundCollider;
+        private Transform _pointsContainer;
+        private Collider _groundCollider;
+
+        private int _patrolPointCount = 10;
+        private float _minPointDistance = 3f;
 
         private List<Point> _allPoints = new List<Point>();
+
+        public LocationGenerator WithPointPrefabs(Point basePointPrefab, Point patrolPointPrefab)
+        {
+            _basePointPrefab = basePointPrefab;
+            _patrolPointPrefab = patrolPointPrefab;
+            return this;
+        }
+
+        public LocationGenerator WithLocation(ILocation location)
+        {
+            _pointsContainer = location.PointsContainer;
+            _groundCollider = location.GroundCollider;
+            return this;
+        }
+
+        public LocationGenerator WithSettings(int patrolPointCount, float minDistance)
+        {
+            _patrolPointCount = patrolPointCount;
+            _minPointDistance = minDistance;
+            return this;
+        }
+
 
         public void Generate(out Point basePoint, out List<Point> points)
         {
@@ -28,7 +51,7 @@ namespace HS.Location
 
         private Point GenerateBasePoint(Vector3 groundCenter, Vector3 groundSize, Point pointPrefab)
         {
-            Point spawnedPoint = SpawnPoint(groundCenter, groundSize, _basePointPrefab);
+            Point spawnedPoint = SpawnPoint(groundCenter, groundSize, pointPrefab);
             return spawnedPoint;
         }
 
@@ -37,7 +60,7 @@ namespace HS.Location
             List<Point> points = new List<Point>();
             for (int i = 0; i < TriesCount; i++)
             {
-                Point spawnedPoint = SpawnPoint(groundCenter, groundSize, _patrolPointPrefab);
+                Point spawnedPoint = SpawnPoint(groundCenter, groundSize, pointPrefab);
                 if (!spawnedPoint)
                 {
                     continue;
@@ -50,11 +73,11 @@ namespace HS.Location
             return points;
         }
 
-        private void Clear()
+        public void Clear()
         {
             for (int i = _allPoints.Count - 1; i >= 0; i--)
             {
-                Destroy(_allPoints[i].gameObject);
+                GameObject.Destroy(_allPoints[i].gameObject);
             }
             _allPoints.Clear();
         }
@@ -62,10 +85,10 @@ namespace HS.Location
         private Point SpawnPoint(Vector3 groundCenter, Vector3 groundSize, Point pointPrefab)
         {
             Vector3 position = GetRandomPosition(groundCenter, groundSize);
-            if (!CheckDitanceToPoints(position, _minDistance, _allPoints))
+            if (!CheckDitanceToPoints(position, _minPointDistance, _allPoints))
                 return null;
 
-            Point spawnedPoint = Instantiate(pointPrefab, position, Quaternion.identity, _pointsContainer);
+            Point spawnedPoint = GameObject.Instantiate(pointPrefab, position, Quaternion.identity, _pointsContainer);
             spawnedPoint.Init(position);
 
             _allPoints.Add(spawnedPoint);
